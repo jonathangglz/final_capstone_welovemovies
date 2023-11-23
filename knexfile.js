@@ -3,20 +3,31 @@ const path = require("path");
 require("dotenv").config();
 
 const {
+  NODE_ENV = "development",
   DATABASE_URL = "postgresql://postgres@localhost/postgres",
   DEVELOPMENT_DATABASE_URL,
   PRODUCTION_DATABASE_URL,
 } = process.env;
 
-const URL =
-  NODE_ENV === "production"
-    ? PRODUCTION_DATABASE_URL
-    : DEVELOPMENT_DATABASE_URL;
+let connectionURL;
+
+switch (NODE_ENV) {
+  case "production":
+    connectionURL = PRODUCTION_DATABASE_URL || DATABASE_URL;
+    break;
+  case "test":
+    // Test configuration (using SQLite3 or another setup as you prefer)
+    connectionURL = { filename: ":memory:" };
+    break;
+  default:
+    // Default to development if NODE_ENV is not set
+    connectionURL = DEVELOPMENT_DATABASE_URL || DATABASE_URL;
+}
 
 module.exports = {
   development: {
     client: "postgresql",
-    connection: URL,
+    connection: connectionURL,
     pool: { min: 0, max: 5 },
     migrations: {
       directory: path.join(__dirname, "src", "db", "migrations"),
@@ -28,7 +39,7 @@ module.exports = {
 
   production: {
     client: "postgresql",
-    connection: URL,
+    connection: connectionURL,
     pool: { min: 0, max: 5 },
     migrations: {
       directory: path.join(__dirname, "src", "db", "migrations"),
@@ -40,9 +51,7 @@ module.exports = {
 
   test: {
     client: "sqlite3",
-    connection: {
-      filename: ":memory:",
-    },
+    connection: connectionURL,
     migrations: {
       directory: path.join(__dirname, "src", "db", "migrations"),
     },
